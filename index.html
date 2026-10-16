@@ -1,0 +1,2436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HITSTER ONLINE — Spotify Playlist & Global 2-Player Edition</title>
+  <!-- PeerJS for Serverless Cross-Continent WebRTC P2P (GitHub Pages / Netlify / Vercel + Local) -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0b0716;
+      --bg-card: #17102a;
+      --neon-pink: #ff2a85;
+      --neon-cyan: #00f0ff;
+      --neon-gold: #ffcc00;
+      --neon-green: #00e676;
+      --neon-purple: #9d4edd;
+      --text-main: #ffffff;
+      --text-muted: #b3a8cc;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 15% 15%, rgba(255, 42, 133, 0.22) 0%, transparent 45%),
+        radial-gradient(circle at 85% 20%, rgba(0, 240, 255, 0.18) 0%, transparent 45%),
+        radial-gradient(circle at 50% 90%, rgba(157, 78, 221, 0.25) 0%, transparent 50%),
+        var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow-x: hidden;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 26px;
+      background: rgba(18, 11, 36, 0.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 24px rgba(255, 42, 133, 0.4);
+    }
+
+    .brand-tag {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.09);
+      color: var(--neon-cyan);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill-badge {
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .role-badge {
+      background: rgba(0, 230, 118, 0.14);
+      border: 1.5px solid var(--neon-green);
+      color: var(--neon-green);
+      cursor: pointer;
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #fff;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.1);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-pink {
+      background: linear-gradient(135deg, #ff2a85, #ff6b4a);
+      box-shadow: 0 6px 20px rgba(255, 42, 133, 0.38);
+    }
+
+    .btn-cyan {
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+      box-shadow: 0 6px 20px rgba(0, 198, 255, 0.35);
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #ffcc00, #ff8800);
+      color: #1a1000;
+      box-shadow: 0 6px 20px rgba(255, 204, 0, 0.38);
+    }
+
+    .btn-stop {
+      background: linear-gradient(135deg, #e11d48, #9f1239);
+      box-shadow: 0 4px 14px rgba(225, 29, 72, 0.4);
+      padding: 7px 14px;
+      font-size: 12.5px;
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+    }
+
+    .container {
+      max-width: 1260px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    .lobby-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 24px;
+      margin-top: 12px;
+    }
+
+    .panel {
+      background: rgba(23, 16, 42, 0.88);
+      border: 1.5px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 26px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+    }
+
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panel p.sub {
+      margin: 0 0 18px;
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .input-group {
+      margin-bottom: 15px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--neon-cyan);
+      margin-bottom: 6px;
+    }
+
+    .text-input {
+      width: 100%;
+      padding: 12px 15px;
+      border-radius: 14px;
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      background: rgba(8, 5, 18, 0.8);
+      color: #ffffff;
+      font-size: 14.5px;
+      outline: none;
+      user-select: text;
+      transition: border-color 0.15s;
+    }
+
+    .text-input:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+    }
+
+    .text-input:disabled {
+      opacity: 0.75;
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 42, 133, 0.4);
+      color: var(--neon-gold);
+      cursor: not-allowed;
+    }
+
+    .preset-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0 18px;
+    }
+
+    .chip {
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chip:hover, .chip.active {
+      background: rgba(255, 42, 133, 0.25);
+      border-color: var(--neon-pink);
+      color: #fff;
+    }
+
+    .invite-box {
+      background: rgba(0, 240, 255, 0.08);
+      border: 1.5px dashed rgba(0, 240, 255, 0.45);
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-top: 14px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .players-hud {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    .player-stat-card {
+      background: rgba(23, 16, 42, 0.9);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s;
+    }
+
+    .player-stat-card.active-turn {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 26px rgba(0, 240, 255, 0.25);
+    }
+
+    .player-stat-card.steal-turn {
+      border-color: var(--neon-gold);
+      box-shadow: 0 0 26px rgba(255, 204, 0, 0.3);
+    }
+
+    .p-name {
+      font-size: 18px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .p-progress {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .p-badges {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .coin-counter {
+      background: rgba(255, 204, 0, 0.16);
+      border: 1.5px solid var(--neon-gold);
+      color: var(--neon-gold);
+      font-weight: 900;
+      font-size: 16px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cards-counter {
+      background: rgba(0, 240, 255, 0.14);
+      border: 1.5px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      font-weight: 900;
+      font-size: 16px;
+      padding: 6px 14px;
+      border-radius: 999px;
+    }
+
+    .stage-grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 22px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 860px) {
+      .stage-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .turntable-card {
+      background: linear-gradient(155deg, #1d1236 0%, #100920 100%);
+      border: 2px solid rgba(255, 42, 133, 0.4);
+      border-radius: 24px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .vinyl-disc {
+      width: 175px;
+      height: 175px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 50%, #111 0%, #111 16%, #ff2a85 17%, #ff2a85 32%, #191919 33%, #2a2a2a 48%, #141414 50%, #252525 70%, #0f0f0f 100%);
+      border: 3px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 0 30px rgba(255, 42, 133, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .vinyl-disc.spinning {
+      animation: spinVinyl 4s linear infinite;
+    }
+
+    @keyframes spinVinyl {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .vinyl-center {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 900;
+      color: #fff;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .revealed-year-big {
+      font-size: 46px;
+      font-weight: 900;
+      color: var(--neon-gold);
+      text-shadow: 0 0 18px rgba(255, 204, 0, 0.5);
+      line-height: 1.05;
+      margin-top: 4px;
+    }
+
+    .revealed-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin-top: 6px;
+      color: #fff;
+    }
+
+    .revealed-artist {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--neon-cyan);
+      margin-bottom: 10px;
+    }
+
+    .audio-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .action-panel {
+      background: rgba(23, 16, 42, 0.9);
+      border: 2px solid rgba(255, 255, 255, 0.14);
+      border-radius: 24px;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .top-badge-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      background: rgba(0, 240, 255, 0.15);
+      color: var(--neon-cyan);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+    }
+
+    .live-activity-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      background: rgba(255, 42, 133, 0.16);
+      color: #ff85b3;
+      border: 1px solid rgba(255, 42, 133, 0.4);
+    }
+
+    .spectator-lock-notice {
+      background: rgba(255, 204, 0, 0.1);
+      border: 1.5px dashed rgba(255, 204, 0, 0.5);
+      color: var(--neon-gold);
+      border-radius: 14px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 800;
+      margin-top: 10px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .guess-inputs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 14px 0;
+    }
+
+    @media (max-width: 640px) {
+      .guess-inputs-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .timeline-section {
+      background: rgba(18, 12, 34, 0.92);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 22px 24px;
+      margin-bottom: 20px;
+    }
+
+    .timeline-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .timeline-title {
+      font-size: 18px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .timeline-scroll {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 14px 6px 18px;
+      scrollbar-width: thin;
+    }
+
+    .song-card {
+      min-width: 148px;
+      max-width: 158px;
+      height: 196px;
+      background: linear-gradient(160deg, #251742 0%, #150d2a 100%);
+      border: 2px solid rgba(255, 255, 255, 0.22);
+      border-radius: 18px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: center;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .song-card.newly-won {
+      border-color: var(--neon-green);
+      box-shadow: 0 0 22px rgba(0, 230, 118, 0.4);
+    }
+
+    .song-card-cover {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.1);
+      background-size: cover;
+      background-position: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .song-card-year {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--neon-cyan);
+      letter-spacing: 0.5px;
+      line-height: 1.1;
+    }
+
+    .song-card-title {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #fff;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.25;
+    }
+
+    .song-card-artist {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .timeline-slot {
+      min-width: 82px;
+      height: 176px;
+      border-radius: 16px;
+      border: 2px dashed rgba(0, 240, 255, 0.38);
+      background: rgba(0, 240, 255, 0.05);
+      color: var(--neon-cyan);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.16s ease;
+      font-size: 11.5px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .timeline-slot:hover:not(.spectator-locked):not(.disabled-slot) {
+      background: rgba(0, 240, 255, 0.18);
+      border-color: var(--neon-cyan);
+      transform: scale(1.04);
+    }
+
+    .timeline-slot.remote-hover {
+      border-color: var(--neon-pink);
+      background: rgba(255, 42, 133, 0.16);
+      box-shadow: 0 0 16px rgba(255, 42, 133, 0.35);
+    }
+
+    .timeline-slot.selected-active {
+      background: rgba(0, 240, 255, 0.28);
+      border: 2.5px solid var(--neon-cyan);
+      box-shadow: 0 0 22px rgba(0, 240, 255, 0.45);
+      color: #ffffff;
+    }
+
+    .timeline-slot.selected-steal {
+      background: rgba(255, 204, 0, 0.28);
+      border: 2.5px solid var(--neon-gold);
+      box-shadow: 0 0 22px rgba(255, 204, 0, 0.5);
+      color: var(--neon-gold);
+    }
+
+    .timeline-slot.disabled-slot {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    .timeline-slot.spectator-locked {
+      cursor: not-allowed;
+    }
+
+    .reveal-banner {
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 14px 18px;
+      margin: 12px 0;
+      border-left: 4px solid var(--neon-pink);
+      font-size: 14.5px;
+      line-height: 1.5;
+    }
+
+    #winner-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 4, 18, 0.88);
+      backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .winner-card {
+      max-width: 540px;
+      width: 100%;
+      background: linear-gradient(160deg, #261447 0%, #120924 100%);
+      border: 3px solid var(--neon-gold);
+      border-radius: 32px;
+      padding: 36px 30px;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(255, 204, 0, 0.35);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-logo">HITSTER</div>
+      <span class="brand-tag">SPOTIFY PLAYLIST • 🇲🇽 MEXICO ↔ 🇳🇱 NETHERLANDS</span>
+    </div>
+
+    <div class="header-right">
+      <div id="playlist-badge" class="pill-badge">🎵 Deck: Loading...</div>
+      <div id="my-role-badge" class="pill-badge role-badge" title="Click to switch your assigned player seat (when testing locally)">
+        👤 You are: Player 1 (🇲🇽)
+      </div>
+      <div id="room-badge" class="pill-badge">🌍 Room: Ready</div>
+      <button id="back-to-lobby-btn" class="btn btn-outline" style="display:none; padding:7px 14px; font-size:12px;">
+        ⚙️ Change Playlist / Room
+      </button>
+      <button id="stop-all-btn" class="btn btn-stop" title="Stop game and close all internet/network connections">
+        🛑 Stop Game &amp; Disconnect
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- =================================================================== -->
+    <!-- 1. LOBBY / SETUP VIEW                                               -->
+    <!-- =================================================================== -->
+    <div id="lobby-view">
+      <div class="lobby-grid">
+
+        <!-- Left Panel: Playlist Selection (Spotify URL or Search/Presets) -->
+        <div class="panel">
+          <h2>🎧 1. Choose Your Music Playlist</h2>
+          <p class="sub">
+            Paste any public <strong>Spotify Playlist link</strong> (or search any artist, genre, or decade). Automatically extracts the songs and determines each track's <strong>original studio release year</strong>!
+          </p>
+
+          <div class="input-group">
+            <label>Spotify Playlist URL or Search Theme / Artist</label>
+            <input
+              id="playlist-input"
+              type="text"
+              class="text-input"
+              placeholder="https://open.spotify.com/playlist/... or e.g. 'Top 2000', '80s Hits', 'ABBA'"
+              value=""
+            />
+          </div>
+
+          <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:6px;">
+            Quick 1-Click Presets (or paste any Spotify playlist link above):
+          </div>
+          <div class="preset-chips">
+            <div class="chip active" data-preset="classic">🔥 Classic Hitster Mix (1960s–2020s)</div>
+            <div class="chip" data-preset="https://open.spotify.com/playlist/37i9dQZF1DX4UtSsGT1Sbe">🕺 All Out 80s (Spotify)</div>
+            <div class="chip" data-preset="https://open.spotify.com/playlist/37i9dQZF1DXbTxeAdrVG2l">📼 All Out 90s (Spotify)</div>
+            <div class="chip" data-preset="https://open.spotify.com/playlist/37i9dQZF1DX4o1oenSJRJd">💿 All Out 2000s (Spotify)</div>
+            <div class="chip" data-preset="Golden Earring Queen ABBA Fleetwood Mac Coldplay">🇳🇱 Top 2000 NL Mix</div>
+            <div class="chip" data-preset="Luis Miguel Shakira Juanes Santana Maná">🇲🇽 Fiesta Mexico &amp; Latin Hits</div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <button id="load-playlist-btn" class="btn btn-pink">
+              📥 Load Playlist &amp; Detect Years
+            </button>
+            <span id="playlist-status-text" style="font-size:13px; color:var(--neon-cyan); font-weight:700;"></span>
+          </div>
+        </div>
+
+        <!-- Right Panel: Players & Mexico <-> Netherlands Multiplayer Setup -->
+        <div class="panel">
+          <h2>🌍 2. Players &amp; Mexico ↔ Netherlands Connection</h2>
+          <p class="sub">
+            Each player is locked to their own turn, while watching the other player's slot selection and typing <strong>live in real time</strong>!
+          </p>
+
+          <div class="guess-inputs-grid" style="margin-top:0;">
+            <div class="input-group" style="margin-bottom:0;">
+              <label>Player 1 Name (🇲🇽 Host)</label>
+              <input id="p1-name-input" type="text" class="text-input" value="Wout (Mexico 🇲🇽)" />
+            </div>
+            <div class="input-group" style="margin-bottom:0;">
+              <label>Player 2 Name (🇳🇱 Friend)</label>
+              <input id="p2-name-input" type="text" class="text-input" value="Friend (Netherlands 🇳🇱)" />
+            </div>
+          </div>
+
+          <div class="input-group" style="margin-top:14px;">
+            <label>Your Seat &amp; Online Room Code</label>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <select id="seat-select" class="text-input" style="max-width:210px; font-weight:800;">
+                <option value="0">👤 I am Player 1 (🇲🇽)</option>
+                <option value="1">👤 I am Player 2 (🇳🇱)</option>
+              </select>
+              <input id="room-code-input" type="text" class="text-input" value="MEXNL1" style="max-width:130px; font-weight:900; letter-spacing:2px; text-transform:uppercase;" />
+              <button id="join-online-btn" class="btn btn-cyan">
+                🔗 Connect Room
+              </button>
+            </div>
+          </div>
+
+          <div id="invite-link-box" class="invite-box">
+            <div><strong>🌐 Share Invite Link with Netherlands Player:</strong> (Automatically sets them as Player 2)</div>
+            <div id="tunnel-url-display" style="margin:6px 0; color:var(--neon-gold); font-family:monospace; word-break:break-all;">
+              Loading invite link...
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+              <button id="copy-invite-btn" class="btn btn-outline" style="padding:6px 12px; font-size:12px;">
+                📋 Copy Invite Link for Player 2
+              </button>
+              <span id="online-status-pill" style="font-size:12px; color:var(--neon-green); font-weight:700; align-self:center;"></span>
+            </div>
+          </div>
+
+          <div style="margin-top:22px; display:flex; gap:12px;">
+            <button id="start-game-btn" class="btn btn-gold" style="width:100%; font-size:16px; padding:14px;">
+              🚀 START HITSTER MATCH (First to 10 Songs Wins!)
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- 2. ACTIVE GAME VIEW                                                 -->
+    <!-- =================================================================== -->
+    <div id="game-view" style="display:none;">
+
+      <div class="players-hud">
+        <div id="p0-hud-card" class="player-stat-card active-turn">
+          <div>
+            <div id="p0-hud-name" class="p-name">Player 1</div>
+            <div id="p0-hud-sub" class="p-progress">Timeline Goal: 1 / 10 Songs</div>
+          </div>
+          <div class="p-badges">
+            <div class="coin-counter" title="Hitster Coins (Use to steal opponent's wrong placement)">
+              🪙 <span id="p0-coins">1</span>
+            </div>
+            <div class="cards-counter">
+              🎵 <span id="p0-cards">1</span> / 10
+            </div>
+          </div>
+        </div>
+
+        <div id="p1-hud-card" class="player-stat-card">
+          <div>
+            <div id="p1-hud-name" class="p-name">Player 2</div>
+            <div id="p1-hud-sub" class="p-progress">Timeline Goal: 1 / 10 Songs</div>
+          </div>
+          <div class="p-badges">
+            <div class="coin-counter" title="Hitster Coins (Use to steal opponent's wrong placement)">
+              🪙 <span id="p1-coins">1</span>
+            </div>
+            <div class="cards-counter">
+              🎵 <span id="p1-cards">1</span> / 10
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage-grid">
+        <div class="turntable-card">
+          <div id="vinyl-disc" class="vinyl-disc">
+            <div id="vinyl-center" class="vinyl-center">?</div>
+          </div>
+
+          <div id="mystery-info-box">
+            <div style="font-size:15px; font-weight:800; color:var(--neon-pink); letter-spacing:1px;">
+              MYSTERY TRACK PLAYING
+            </div>
+            <div style="font-size:12.5px; color:var(--text-muted); margin-top:4px;">
+              Listen closely &amp; place it in the timeline!
+            </div>
+          </div>
+
+          <div id="revealed-info-box" style="display:none;">
+            <div id="rev-year" class="revealed-year-big">1976</div>
+            <div id="rev-title" class="revealed-title">Dancing Queen</div>
+            <div id="rev-artist" class="revealed-artist">ABBA</div>
+          </div>
+
+          <div class="audio-controls">
+            <button id="play-pause-btn" class="btn btn-pink" style="padding:9px 18px; font-size:13px;">
+              ⏸ Pause Audio
+            </button>
+            <button id="replay-btn" class="btn btn-outline" style="padding:9px 14px; font-size:13px;">
+              🔄 Replay
+            </button>
+          </div>
+          <audio id="audio-player" preload="auto"></audio>
+        </div>
+
+        <div class="action-panel">
+          <div>
+            <div class="top-badge-row">
+              <div id="phase-badge" class="phase-badge">🎯 STEP 1: ACTIVE PLAYER'S TURN</div>
+              <div id="live-activity-pill" class="live-activity-pill">📡 Live Sync Active</div>
+            </div>
+            <h2 id="turn-headline" style="margin:0 0 6px; font-size:24px; font-weight:900;">
+              Player's Turn — Place the Song on Your Timeline!
+            </h2>
+            <p id="turn-instruction" style="margin:0; font-size:14px; color:var(--text-muted); line-height:1.45;">
+              Click a <strong>＋</strong> slot on your timeline below where this song's release year fits.
+            </p>
+            <div id="spectator-lock-notice" class="spectator-lock-notice">
+              🔒 It is the other player's turn! Controls are locked on your screen while you watch their live moves below.
+            </div>
+          </div>
+
+          <!-- Phase 1: Active Player Placement & Guess -->
+          <div id="active-guess-controls">
+            <div class="guess-inputs-grid">
+              <div class="input-group" style="margin-bottom:0;">
+                <label id="title-input-label">Guess Song Title (Half-Title or Typo OK!)</label>
+                <input
+                  id="guess-title-input"
+                  type="text"
+                  class="text-input"
+                  placeholder="e.g. Bohemian Rhapsody"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="input-group" style="margin-bottom:0;">
+                <label id="artist-input-label">Guess Artist (Half-Name or Typo OK!)</label>
+                <input
+                  id="guess-artist-input"
+                  type="text"
+                  class="text-input"
+                  placeholder="e.g. Queen"
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:14px;">
+              <div id="selected-slot-label" style="font-size:13.5px; font-weight:800; color:var(--neon-cyan);">
+                👉 Click a slot on the timeline below to select your year placement
+              </div>
+              <button id="lock-guess-btn" class="btn btn-cyan" disabled>
+                🔒 Lock In Timeline Placement &amp; Guess
+              </button>
+            </div>
+          </div>
+
+          <!-- Phase 2: Opponent Coin Steal -->
+          <div id="steal-controls" style="display:none;">
+            <div class="reveal-banner" style="border-left-color: var(--neon-gold);">
+              <div id="steal-prompt-text" style="font-weight:800; color:#fff;">
+                Opponent placed the song in slot. Do you think that's WRONG?
+              </div>
+              <div style="font-size:13px; color:var(--text-muted); margin-top:4px;">
+                If the non-active player spends <strong>1 Coin (🪙)</strong> and picks a different slot on the timeline below, they will <strong>STEAL</strong> the song into their own timeline if their slot is right! (The spent coin is always lost).
+              </div>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:12px;">
+              <button id="activate-steal-btn" class="btn btn-gold">
+                🪙 Use 1 Coin to Steal (Pick Alternative Slot)
+              </button>
+              <button id="confirm-steal-btn" class="btn btn-gold" style="display:none;" disabled>
+                🔥 Confirm Steal Slot &amp; Reveal Year!
+              </button>
+              <button id="pass-steal-btn" class="btn btn-outline">
+                👍 No Steal — Flip &amp; Reveal Card!
+              </button>
+            </div>
+          </div>
+
+          <!-- Phase 3: Reveal -->
+          <div id="reveal-controls" style="display:none;">
+            <div id="reveal-outcome-banner" class="reveal-banner"></div>
+            <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+              <button id="next-turn-btn" class="btn btn-pink">
+                ▶️ Next Song / Next Player's Turn
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-section">
+        <div class="timeline-header">
+          <div id="active-timeline-title" class="timeline-title">
+            💿 Active Player's Timeline
+          </div>
+          <div style="font-size:12.5px; color:var(--text-muted);">
+            Oldest (Left) ⟶ Newest (Right)
+          </div>
+        </div>
+        <div id="active-timeline-strip" class="timeline-scroll"></div>
+      </div>
+
+      <div class="timeline-section" style="opacity:0.9;">
+        <div class="timeline-header">
+          <div id="other-timeline-title" class="timeline-title" style="font-size:15px; color:var(--text-muted);">
+            👀 Opponent's Timeline
+          </div>
+        </div>
+        <div id="other-timeline-strip" class="timeline-scroll"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="winner-modal">
+    <div class="winner-card">
+      <div style="font-size:56px;">🏆🎉</div>
+      <h1 id="winner-title" style="font-size:32px; font-weight:900; margin:10px 0; color:var(--neon-gold);">
+        HITSTER CHAMPION!
+      </h1>
+      <p id="winner-sub" style="font-size:16px; color:var(--text-muted); margin-bottom:24px;">
+        Reached 10 songs in the timeline!
+      </p>
+      <button id="play-again-btn" class="btn btn-gold" style="font-size:16px; padding:14px 28px;">
+        🔄 Play Another Match
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. MULTI-STAGE SPOTIFY PLAYLIST & RELEASE YEAR RESOLVER
+    //    Stage 1: /api/load-playlist or /api/spotify (Local Server, Netlify Function, Vercel API)
+    //    Stage 2: Browser CORS Gateways for open.spotify.com/embed/playlist
+    //    Stage 3: Spotify Official CORS oEmbed + Deezer JSONP Playlist API (Zero-CORS Fallback!)
+    // =========================================================================
+    const DEFAULT_HITSTER_SEEDS = [
+      { title: "Dancing Queen", artist: "ABBA", year: 1976 },
+      { title: "Bohemian Rhapsody", artist: "Queen", year: 1975 },
+      { title: "Billie Jean", artist: "Michael Jackson", year: 1982 },
+      { title: "Take On Me", artist: "a-ha", year: 1985 },
+      { title: "Smells Like Teen Spirit", artist: "Nirvana", year: 1991 },
+      { title: "Wonderwall", artist: "Oasis", year: 1995 },
+      { title: "Wannabe", artist: "Spice Girls", year: 1996 },
+      { title: "Mr. Brightside", artist: "The Killers", year: 2003 },
+      { title: "Hey Ya!", artist: "Outkast", year: 2003 },
+      { title: "Rolling in the Deep", artist: "Adele", year: 2010 },
+      { title: "Uptown Funk", artist: "Mark Ronson", year: 2014 },
+      { title: "Blinding Lights", artist: "The Weeknd", year: 2019 },
+      { title: "Stayin' Alive", artist: "Bee Gees", year: 1977 },
+      { title: "Hotel California", artist: "Eagles", year: 1976 },
+      { title: "Dreams", artist: "Fleetwood Mac", year: 1977 },
+      { title: "Sweet Dreams (Are Made of This)", artist: "Eurythmics", year: 1983 },
+      { title: "Every Breath You Take", artist: "The Police", year: 1983 },
+      { title: "Africa", artist: "Toto", year: 1982 },
+      { title: "Losing My Religion", artist: "R.E.M.", year: 1991 },
+      { title: "No Scrubs", artist: "TLC", year: 1999 },
+      { title: "Toxic", artist: "Britney Spears", year: 2003 },
+      { title: "Crazy in Love", artist: "Beyonce", year: 2003 },
+      { title: "Viva La Vida", artist: "Coldplay", year: 2008 },
+      { title: "Poker Face", artist: "Lady Gaga", year: 2008 },
+      { title: "Somebody That I Used to Know", artist: "Gotye", year: 2011 },
+      { title: "Get Lucky", artist: "Daft Punk", year: 2013 },
+      { title: "Shape of You", artist: "Ed Sheeran", year: 2017 },
+      { title: "Bad Guy", artist: "Billie Eilish", year: 2019 },
+      { title: "As It Was", artist: "Harry Styles", year: 2022 },
+      { title: "Respect", artist: "Aretha Franklin", year: 1967 },
+      { title: "Hey Jude", artist: "The Beatles", year: 1968 },
+      { title: "Paint It, Black", artist: "The Rolling Stones", year: 1966 },
+      { title: "Superstition", artist: "Stevie Wonder", year: 1972 },
+      { title: "September", artist: "Earth, Wind & Fire", year: 1978 },
+      { title: "Radar Love", artist: "Golden Earring", year: 1973 },
+      { title: "Venus", artist: "Shocking Blue", year: 1969 }
+    ];
+
+    function cleanTrackNameClient(name) {
+      if (!name) return '';
+      return name
+        .replace(/\s*[\(\[][^)\]]*(remaster|version|edit|mix|mono|stereo|feat|ft\.|live|deluxe|anniversary)[^)\]]*[\)\]]/gi, '')
+        .replace(/\s*-\s*([0-9]{4}\s*)?(remaster|version|edit|mono|stereo|live|deluxe).*$/gi, '')
+        .trim();
+    }
+
+    function fetchJsonp(url, timeoutMs = 7000) {
+      return new Promise((resolve, reject) => {
+        const cbName = ' hitster_jsonp_' + Math.random().toString(36).slice(2);
+        const cleanCb = cbName.trim();
+        const script = document.createElement('script');
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error('JSONP timeout'));
+        }, timeoutMs);
+
+        function cleanup() {
+          clearTimeout(timer);
+          delete window[cleanCb];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        }
+
+        window[cleanCb] = (data) => {
+          cleanup();
+          resolve(data);
+        };
+
+        script.onerror = () => {
+          cleanup();
+          reject(new Error('JSONP network error'));
+        };
+
+        const sep = url.includes('?') ? '&' : '?';
+        script.src = `${url}${sep}output=jsonp&callback=${cleanCb}`;
+        document.head.appendChild(script);
+      });
+    }
+
+    async function extractSpotifyPlaylistClientSide(playlistUrl) {
+      const m = playlistUrl.match(/playlist[/:]([a-zA-Z0-9]{15,30})/) || playlistUrl.trim().match(/^([a-zA-Z0-9]{22})$/);
+      if (!m) throw new Error('Invalid Spotify Playlist link.');
+      const playlistId = m[1];
+
+      // Stage 1: Try built-in /api/spotify endpoint (works on Local Server, Netlify Functions, and Vercel API!)
+      try {
+        const apiRes = await fetch(`/api/spotify?id=${encodeURIComponent(playlistId)}`);
+        if (apiRes.ok) {
+          const apiData = await apiRes.json();
+          if (apiData.tracks && apiData.tracks.length > 0) {
+            return { title: apiData.title || 'Spotify Playlist', tracks: apiData.tracks };
+          }
+        }
+      } catch (e) {}
+
+      // Stage 2: Try CORS proxies in parallel for open.spotify.com/embed/playlist
+      const embedUrl = `https://open.spotify.com/embed/playlist/${playlistId}`;
+      const proxies = [
+        `https://api.cors.lol/?url=${encodeURIComponent(embedUrl)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(embedUrl)}`,
+        `https://everyorigin.jwvbremen.nl/raw?url=${encodeURIComponent(embedUrl)}`
+      ];
+
+      for (const pUrl of proxies) {
+        try {
+          const r = await fetch(pUrl);
+          if (r.ok) {
+            const htmlText = await r.text();
+            const nextMatch = htmlText.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+            if (nextMatch) {
+              const data = JSON.parse(nextMatch[1]);
+              const entity = data?.props?.pageProps?.state?.data?.entity || {};
+              const trackList = entity.trackList || [];
+              const coverArt = entity?.visualIdentity?.image?.[0]?.url || '';
+              const tracks = trackList
+                .map(item => ({
+                  title: (item.title || '').trim(),
+                  artist: (item.subtitle || '').replace(/\u00a0/g, ' ').trim(),
+                  previewUrl: item?.audioPreview?.url || null,
+                  coverUrl: coverArt,
+                  year: null
+                }))
+                .filter(t => t.title && t.artist);
+              if (tracks.length > 0) {
+                return { title: entity.name || entity.title || 'Spotify Playlist', tracks };
+              }
+            }
+          }
+        } catch (e) {}
+      }
+
+      // Stage 3: Zero-CORS Fallback using Spotify Official oEmbed (CORS=*) + Deezer JSONP Playlist Catalog!
+      let playlistTitle = 'Hits Mix';
+      try {
+        const oembedRes = await fetch(
+          `https://open.spotify.com/oembed?url=${encodeURIComponent(`https://open.spotify.com/playlist/${playlistId}`)}`
+        );
+        if (oembedRes.ok) {
+          const oembedData = await oembedRes.json();
+          if (oembedData.title) {
+            playlistTitle = oembedData.title.replace(/^Spotify Embed:\s*/i, '').trim();
+          }
+        }
+      } catch (e) {}
+
+      // Fetch matching playlist tracks via Deezer JSONP (works 100% in browser without CORS proxies!)
+      try {
+        const dzSearch = await fetchJsonp(
+          `https://api.deezer.com/search/playlist?q=${encodeURIComponent(playlistTitle)}&limit=5`
+        );
+        const dzPlaylists = dzSearch?.data || [];
+        for (const pl of dzPlaylists) {
+          const plTracksData = await fetchJsonp(`https://api.deezer.com/playlist/${pl.id}/tracks?limit=60`);
+          const items = plTracksData?.data || [];
+          const extracted = items
+            .map(item => ({
+              title: cleanTrackNameClient(item.title || ''),
+              artist: item?.artist?.name || '',
+              previewUrl: item.preview || null,
+              coverUrl: item?.album?.cover_big || item?.album?.cover_medium || '',
+              year: null
+            }))
+            .filter(t => t.title && t.artist);
+          if (extracted.length >= 6) {
+            return { title: playlistTitle, tracks: extracted };
+          }
+        }
+      } catch (e) {}
+
+      // Final fallback: search iTunes directly for the playlist's title!
+      const itunesTracks = await searchTracksClientSide(playlistTitle);
+      if (itunesTracks.length >= 4) {
+        return { title: playlistTitle, tracks: itunesTracks };
+      }
+
+      throw new Error('Could not load tracks for that playlist. Make sure the Spotify playlist is Public!');
+    }
+
+    async function enrichTrackClientSide(track) {
+      if (track.year && track.previewUrl) return track;
+
+      const rawTitle = track.title || '';
+      const rawArtist = track.artist || '';
+      const cleanT = cleanTrackNameClient(rawTitle);
+      const primaryArtist = rawArtist.split(',')[0].split('&')[0].trim();
+      const query = `${cleanT} ${primaryArtist}`.trim();
+
+      let bestPreview = track.previewUrl || null;
+      let bestCover = track.coverUrl || '';
+      const candidateYears = [];
+
+      try {
+        const res = await fetch(
+          `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=10`
+        );
+        const data = await res.json();
+        const normTargetTitle = cleanT.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normTargetArtist = primaryArtist.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        for (const r of data.results || []) {
+          const rTitle = cleanTrackNameClient(r.trackName || '');
+          const rArtist = r.artistName || '';
+          const rCol = (r.collectionName || '').toLowerCase();
+
+          if (/karaoke|tribute|lullaby|8-bit|ringtone|made famous/i.test(rCol + ' ' + rArtist)) {
+            continue;
+          }
+
+          const normRT = rTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const normRA = rArtist.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+          const titleOk =
+            normTargetTitle.includes(normRT) ||
+            normRT.includes(normTargetTitle) ||
+            (normTargetTitle.length >= 4 && normTargetTitle.slice(0, 4) === normRT.slice(0, 4));
+          const artistOk =
+            normTargetArtist.includes(normRA) || normRA.includes(normTargetArtist);
+
+          if (titleOk && artistOk) {
+            if (!bestPreview && r.previewUrl) bestPreview = r.previewUrl;
+            if (!bestCover && r.artworkUrl100) {
+              bestCover = r.artworkUrl100.replace('100x100bb', '400x400bb');
+            }
+            if (r.releaseDate && /^\d{4}/.test(r.releaseDate)) {
+              const yr = parseInt(r.releaseDate.slice(0, 4), 10);
+              if (yr >= 1920 && yr <= 2026) candidateYears.push(yr);
+            }
+          }
+        }
+      } catch (e) {}
+
+      const finalYear = candidateYears.length > 0 ? Math.min(...candidateYears) : track.year;
+      if (!bestPreview || !finalYear) return null;
+
+      return {
+        title: cleanT || rawTitle,
+        artist: rawArtist,
+        year: finalYear,
+        previewUrl: bestPreview,
+        coverUrl: bestCover
+      };
+    }
+
+    async function searchTracksClientSide(searchTerm) {
+      const res = await fetch(
+        `https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&entity=song&limit=48`
+      );
+      const data = await res.json();
+      const seen = new Set();
+      const deck = [];
+      for (const r of data.results || []) {
+        const title = cleanTrackNameClient(r.trackName || '');
+        const artist = r.artistName || '';
+        const preview = r.previewUrl;
+        const rel = r.releaseDate || '';
+        if (!title || !artist || !preview || !/^\d{4}/.test(rel)) continue;
+        if (/karaoke|tribute|made famous/i.test((r.collectionName || '') + ' ' + artist)) continue;
+        const key = `${title.toLowerCase()}::${artist.toLowerCase()}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deck.push({
+          title,
+          artist,
+          year: parseInt(rel.slice(0, 4), 10),
+          previewUrl: preview,
+          coverUrl: (r.artworkUrl100 || '').replace('100x100bb', '400x400bb')
+        });
+      }
+      return deck;
+    }
+
+    // =========================================================================
+    // 2. FUZZY & HALF-TITLE / TYPO-TOLERANT MATCHING ENGINE
+    // =========================================================================
+    function normalizeMusicString(str) {
+      if (!str) return '';
+      return str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\(\[][^)\]]*[\)\]]/g, ' ')
+        .replace(/\b(feat|ft|featuring|remastered|remaster|version|edit|mix|the|a|an)\b/g, ' ')
+        .replace(/&/g, ' and ')
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function levenshteinDistance(a, b) {
+      const m = a.length, n = b.length;
+      if (m === 0) return n;
+      if (n === 0) return m;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+        }
+      }
+      return dp[m][n];
+    }
+
+    function similarityScore(a, b) {
+      if (!a || !b) return 0;
+      const maxLen = Math.max(a.length, b.length);
+      return maxLen === 0 ? 1 : 1 - levenshteinDistance(a, b) / maxLen;
+    }
+
+    function isFuzzyOrHalfMatch(userGuess, actualValue) {
+      const g = normalizeMusicString(userGuess);
+      const a = normalizeMusicString(actualValue);
+      if (!g || g.length < 2 || !a) return false;
+      if (g === a) return true;
+
+      const gCompact = g.replace(/\s+/g, '');
+      const aCompact = a.replace(/\s+/g, '');
+
+      if (similarityScore(gCompact, aCompact) >= 0.62) return true;
+
+      const minHalfLen = Math.max(3, Math.floor(aCompact.length * 0.42));
+      if (gCompact.length >= minHalfLen && (aCompact.includes(gCompact) || gCompact.includes(aCompact))) {
+        return true;
+      }
+
+      if (gCompact.length >= minHalfLen && gCompact.length <= aCompact.length) {
+        const winLen = gCompact.length;
+        for (let i = 0; i <= aCompact.length - winLen; i++) {
+          if (similarityScore(gCompact, aCompact.slice(i, i + winLen)) >= 0.72) return true;
+        }
+      }
+
+      const aWords = a.split(' ').filter(w => w.length >= 2);
+      const gWords = g.split(' ').filter(w => w.length >= 2);
+      if (aWords.length > 0 && gWords.length > 0) {
+        let matchedWords = 0;
+        for (const gw of gWords) {
+          if (aWords.some(aw => similarityScore(gw, aw) >= 0.68 || (gw.length >= 4 && aw.startsWith(gw)))) {
+            matchedWords++;
+          }
+        }
+        if (matchedWords >= Math.ceil(aWords.length * 0.5)) return true;
+      }
+
+      if (actualValue.includes(',') || actualValue.includes('&') || /feat/i.test(actualValue)) {
+        const parts = actualValue.split(/[,&]|feat\.?|ft\.?/i).map(s => s.trim()).filter(Boolean);
+        for (const part of parts) {
+          const pNorm = normalizeMusicString(part);
+          if (pNorm && (similarityScore(g, pNorm) >= 0.65 || (g.length >= 4 && pNorm.includes(g)))) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
+
+    // =========================================================================
+    // 3. STRICT TURN OWNERSHIP & REAL-TIME LIVE SPECTATING STATE
+    // =========================================================================
+    let loadedDeck = [];
+    let ws = null;
+    let peer = null;
+    let peerConnections = [];
+    let isStopped = false;
+    let tunnelPollInterval = null;
+
+    // Strict player identity for this browser window: 0 = Player 1 (Mexico), 1 = Player 2 (Netherlands)
+    let myPlayerIndex = 0;
+
+    let gameState = {
+      status: 'lobby',
+      phase: 'place', // 'place' | 'steal' | 'reveal'
+      activePlayer: 0, // 0 or 1
+      players: [
+        { name: 'Wout (Mexico 🇲🇽)', coins: 1, timeline: [] },
+        { name: 'Friend (Netherlands 🇳🇱)', coins: 1, timeline: [] }
+      ],
+      deck: [],
+      currentSong: null,
+      activeChoiceSlot: null,
+      remoteHoverSlot: null,
+      guessTitle: '',
+      guessArtist: '',
+      stealModeActive: false,
+      stealChoiceSlot: null,
+      liveActivityText: 'Waiting for first move...',
+      lastRevealSummary: '',
+      winnerIndex: null
+    };
+
+    const audioEl = document.getElementById('audio-player');
+    const vinylDisc = document.getElementById('vinyl-disc');
+    const vinylCenter = document.getElementById('vinyl-center');
+
+    function setMyPlayerSeat(idx) {
+      myPlayerIndex = idx === 1 ? 1 : 0;
+      document.getElementById('seat-select').value = String(myPlayerIndex);
+      const pName = gameState.players[myPlayerIndex]?.name || (myPlayerIndex === 0 ? 'Player 1 (🇲🇽)' : 'Player 2 (🇳🇱)');
+      document.getElementById('my-role-badge').textContent =
+        `👤 You are: Player ${myPlayerIndex + 1} (${pName})`;
+      renderAll();
+    }
+
+    document.getElementById('seat-select').addEventListener('change', (e) => {
+      setMyPlayerSeat(parseInt(e.target.value, 10));
+    });
+
+    // Clicking the header role badge also lets you toggle P1/P2 if testing on one screen
+    document.getElementById('my-role-badge').addEventListener('click', () => {
+      setMyPlayerSeat(1 - myPlayerIndex);
+    });
+
+    // Determine whether THIS browser window is allowed to act in the current phase
+    function canLocalPlayerActInPlacePhase() {
+      return myPlayerIndex === gameState.activePlayer;
+    }
+
+    function canLocalPlayerActInStealPhase() {
+      const opponentIdx = 1 - gameState.activePlayer;
+      return myPlayerIndex === opponentIdx;
+    }
+
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    // =========================================================================
+    // 4. UNIVERSAL PLAYLIST LOADER
+    // =========================================================================
+    async function loadPlaylistUniversal() {
+      if (isStopped) return;
+      const btn = document.getElementById('load-playlist-btn');
+      const statusText = document.getElementById('playlist-status-text');
+      const rawInput = document.getElementById('playlist-input').value.trim();
+
+      btn.disabled = true;
+      statusText.textContent = '⏳ Fetching songs & determining original release years...';
+
+      const isSpotifyInput = /playlist[/:]([a-zA-Z0-9]{15,30})/.test(rawInput) || /^[a-zA-Z0-9]{22}$/.test(rawInput);
+      let mode = isSpotifyInput ? 'spotify' : rawInput.length > 0 ? 'search' : 'default';
+
+      try {
+        // 1. Always try backend /api/load-playlist first (works on Local Server, LAN IP, and Tunnel!)
+        let serverWorked = false;
+        try {
+          const res = await fetch('/api/load-playlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode, input: rawInput })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.tracks && data.tracks.length >= 4) {
+              loadedDeck = data.tracks;
+              statusText.textContent = `✅ Loaded ${loadedDeck.length} songs from "${data.source}" with verified release years!`;
+              document.getElementById('playlist-badge').textContent =
+                `🎵 ${data.source} (${loadedDeck.length} songs)`;
+              serverWorked = true;
+            }
+          }
+        } catch (e) {}
+
+        // 2. Serverless Mode (Netlify / Vercel / GitHub Pages)
+        if (!serverWorked) {
+          let tracks = [];
+          let sourceLabel = 'Classic Hitster Mix';
+
+          if (mode === 'spotify') {
+            const extracted = await extractSpotifyPlaylistClientSide(rawInput);
+            sourceLabel = extracted.title || 'Spotify Playlist';
+            const subset = shuffleArray(extracted.tracks).slice(0, 28);
+            const enriched = await Promise.all(subset.map(t => enrichTrackClientSide(t)));
+            tracks = enriched.filter(Boolean);
+          } else if (mode === 'search') {
+            sourceLabel = `Search: ${rawInput}`;
+            tracks = await searchTracksClientSide(rawInput);
+          } else {
+            const subset = shuffleArray(DEFAULT_HITSTER_SEEDS).slice(0, 26);
+            const enriched = await Promise.all(subset.map(t => enrichTrackClientSide(t)));
+            tracks = enriched.filter(Boolean);
+          }
+
+          if (tracks.length < 4) {
+            throw new Error('Not enough playable tracks found. Try another playlist or search term!');
+          }
+          loadedDeck = tracks;
+          statusText.textContent = `✅ Loaded ${loadedDeck.length} songs from "${sourceLabel}" with verified release years!`;
+          document.getElementById('playlist-badge').textContent =
+            `🎵 ${sourceLabel} (${loadedDeck.length} songs)`;
+        }
+      } catch (err) {
+        statusText.textContent = `⚠️ ${err.message}`;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('load-playlist-btn').addEventListener('click', loadPlaylistUniversal);
+
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const preset = chip.dataset.preset;
+        document.getElementById('playlist-input').value = preset === 'classic' ? '' : preset;
+        loadPlaylistUniversal();
+      });
+    });
+
+    // =========================================================================
+    // 5. MULTIPLAYER CONNECTION & REAL-TIME LIVE STREAMING
+    // =========================================================================
+    async function updateInviteUrlDisplay() {
+      if (isStopped) return;
+      const code = document.getElementById('room-code-input').value.trim().toUpperCase() || 'MEXNL1';
+      let baseUrl = window.location.origin + window.location.pathname;
+      try {
+        const res = await fetch('/api/server-info');
+        if (res.ok) {
+          const info = await res.json();
+          if (info.publicUrl) baseUrl = info.publicUrl + '/';
+        }
+      } catch (e) {}
+      const fullInvite = `${baseUrl}?room=${encodeURIComponent(code)}&seat=1`;
+      document.getElementById('tunnel-url-display').textContent = fullInvite;
+    }
+
+    document.getElementById('room-code-input').addEventListener('input', updateInviteUrlDisplay);
+
+    document.getElementById('copy-invite-btn').addEventListener('click', () => {
+      const url = document.getElementById('tunnel-url-display').textContent.trim();
+      navigator.clipboard.writeText(url);
+      document.getElementById('online-status-pill').textContent =
+        '✅ Player 2 Invite Link copied! Send it to the Netherlands!';
+    });
+
+    function connectOnlineRoom(roomCode, playerName) {
+      if (isStopped) return;
+      const cleanCode = (roomCode || 'MEXNL1').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const statusPill = document.getElementById('online-status-pill');
+      statusPill.textContent = `⏳ Connecting to Global Room ${cleanCode}...`;
+
+      // 1. Serverless WebRTC PeerJS (Works on GitHub Pages, Netlify, Vercel, and Local!)
+      if (typeof Peer !== 'undefined') {
+        if (peer) {
+          try { peer.destroy(); } catch (e) {}
+        }
+        const hostPeerId = `hitster-mexnl-2026-${cleanCode}-host`;
+        peer = new Peer(hostPeerId);
+
+        peer.on('open', () => {
+          setMyPlayerSeat(0);
+          document.getElementById('room-badge').textContent = `🌍 Room ${cleanCode} (Player 1 Host)`;
+          statusPill.textContent = `🟢 Room ${cleanCode} Open! Waiting for Player 2...`;
+        });
+
+        peer.on('connection', (conn) => {
+          peerConnections.push(conn);
+          setupPeerConnectionHandlers(conn, cleanCode, true);
+        });
+
+        peer.on('error', (err) => {
+          if (err.type === 'unavailable-id') {
+            // Host already exists -> we are Player 2 (Guest)!
+            setMyPlayerSeat(1);
+            peer = new Peer();
+            peer.on('open', () => {
+              const conn = peer.connect(hostPeerId, { reliable: true });
+              peerConnections.push(conn);
+              setupPeerConnectionHandlers(conn, cleanCode, false);
+            });
+          }
+        });
+      }
+
+      // 2. Also connect local/tunnel WebSocket if running via server.py
+      try {
+        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        if (ws) {
+          try { ws.close(); } catch (e) {}
+        }
+        ws = new WebSocket(`${proto}//${location.host}`);
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ type: 'join_room', roomCode: cleanCode, playerName }));
+        };
+        ws.onmessage = (e) => {
+          try {
+            const msg = JSON.parse(e.data);
+            if (msg.type === 'server_stopped') {
+              stopEverythingAndDisconnect(false);
+              return;
+            }
+            if (msg.type === 'joined' && typeof msg.playerIndex === 'number') {
+              setMyPlayerSeat(msg.playerIndex);
+            } else if (msg.type === 'sync_state' && msg.state) {
+              applyIncomingState(msg.state);
+            } else if (msg.type === 'live_update') {
+              applyIncomingLiveUpdate(msg);
+            }
+          } catch (err) {}
+        };
+      } catch (e) {}
+    }
+
+    function setupPeerConnectionHandlers(conn, cleanCode, isHost) {
+      conn.on('open', () => {
+        document.getElementById('room-badge').textContent =
+          `🌍 Room ${cleanCode} (🇲🇽 ↔ 🇳🇱 Live!)`;
+        document.getElementById('online-status-pill').textContent =
+          `🟢 Connected Live (${isHost ? 'You are Player 1' : 'You are Player 2'})!`;
+
+        if (!isHost) {
+          const p2Name = document.getElementById('p2-name-input').value.trim();
+          conn.send({ type: 'guest_hello', name: p2Name });
+        } else if (gameState.status !== 'lobby') {
+          conn.send({ type: 'sync_state', state: gameState });
+        }
+      });
+
+      conn.on('data', (data) => {
+        if (!data || typeof data !== 'object') return;
+        if (data.type === 'guest_hello' && data.name) {
+          document.getElementById('p2-name-input').value = data.name;
+          gameState.players[1].name = data.name;
+          if (gameState.status !== 'lobby') {
+            broadcastState();
+            renderAll();
+          }
+        } else if (data.type === 'sync_state' && data.state) {
+          applyIncomingState(data.state);
+        } else if (data.type === 'live_update') {
+          applyIncomingLiveUpdate(data);
+        } else if (data.type === 'shutdown') {
+          stopEverythingAndDisconnect(false);
+        }
+      });
+    }
+
+    function applyIncomingState(newState) {
+      const prevSongUrl = gameState.currentSong ? gameState.currentSong.previewUrl : null;
+      gameState = newState;
+      setMyPlayerSeat(myPlayerIndex); // Refresh role badge label with synced player names
+      renderAll();
+      const newSongUrl = gameState.currentSong ? gameState.currentSong.previewUrl : null;
+      if (newSongUrl && newSongUrl !== prevSongUrl && gameState.status === 'playing') {
+        playCurrentMysteryTrack();
+      }
+    }
+
+    // Apply real-time keystrokes, slot selections, and hover movements from the other player!
+    function applyIncomingLiveUpdate(msg) {
+      if (msg.senderIndex === myPlayerIndex) return;
+      if ('activeChoiceSlot' in msg) gameState.activeChoiceSlot = msg.activeChoiceSlot;
+      if ('remoteHoverSlot' in msg) gameState.remoteHoverSlot = msg.remoteHoverSlot;
+      if ('guessTitle' in msg) gameState.guessTitle = msg.guessTitle;
+      if ('guessArtist' in msg) gameState.guessArtist = msg.guessArtist;
+      if ('stealModeActive' in msg) gameState.stealModeActive = msg.stealModeActive;
+      if ('stealChoiceSlot' in msg) gameState.stealChoiceSlot = msg.stealChoiceSlot;
+      if ('coins' in msg && Array.isArray(msg.coins)) {
+        gameState.players[0].coins = msg.coins[0];
+        gameState.players[1].coins = msg.coins[1];
+      }
+      if (msg.liveActivityText) {
+        gameState.liveActivityText = msg.liveActivityText;
+      }
+      renderAll();
+    }
+
+    function sendLiveUpdate(partialUpdate) {
+      if (isStopped) return;
+      const payload = {
+        type: 'live_update',
+        senderIndex: myPlayerIndex,
+        ...partialUpdate
+      };
+      if (payload.liveActivityText) {
+        gameState.liveActivityText = payload.liveActivityText;
+      }
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(payload));
+      }
+      for (const conn of peerConnections) {
+        if (conn && conn.open) {
+          try { conn.send(payload); } catch (e) {}
+        }
+      }
+    }
+
+    function broadcastState() {
+      if (isStopped) return;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'sync_state', state: gameState }));
+      }
+      for (const conn of peerConnections) {
+        if (conn && conn.open) {
+          try { conn.send({ type: 'sync_state', state: gameState }); } catch (e) {}
+        }
+      }
+    }
+
+    document.getElementById('join-online-btn').addEventListener('click', () => {
+      const code = document.getElementById('room-code-input').value.trim().toUpperCase() || 'MEXNL1';
+      const name = document.getElementById(`p${myPlayerIndex + 1}-name-input`).value.trim();
+      connectOnlineRoom(code, name);
+    });
+
+    // =========================================================================
+    // 6. STOP BUTTON — COMPLETELY STOPS GAME & ALL INTERNET CONNECTIONS
+    // =========================================================================
+    async function stopEverythingAndDisconnect(notifyRemote = true) {
+      isStopped = true;
+      if (tunnelPollInterval) clearInterval(tunnelPollInterval);
+
+      try {
+        audioEl.pause();
+        audioEl.removeAttribute('src');
+        audioEl.load();
+      } catch (e) {}
+
+      for (const conn of peerConnections) {
+        try {
+          if (notifyRemote && conn.open) conn.send({ type: 'shutdown' });
+          conn.close();
+        } catch (e) {}
+      }
+      peerConnections = [];
+      if (peer) {
+        try { peer.destroy(); } catch (e) {}
+        peer = null;
+      }
+
+      try {
+        if (notifyRemote && ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'shutdown' }));
+        }
+        if (ws) {
+          ws.onclose = null;
+          ws.close();
+          ws = null;
+        }
+      } catch (e) {}
+
+      if (notifyRemote) {
+        try { await fetch('/api/shutdown'); } catch (e) {}
+      }
+
+      document.body.innerHTML = `
+        <div style="min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#0b0716; color:#fff; font-family:sans-serif; text-align:center; padding:24px;">
+          <div style="font-size:60px; margin-bottom:14px;">🛑</div>
+          <h1 style="margin:0 0 10px; font-size:30px; color:#ff2a85;">Hitster Online Stopped</h1>
+          <p style="color:#b3a8cc; max-width:460px; line-height:1.55; margin-bottom:24px;">
+            All audio streams, WebRTC peer connections, WebSockets, and local tunnel/server processes have been completely shut down. There are no active internet connections.
+          </p>
+        </div>
+      `;
+    }
+
+    document.getElementById('stop-all-btn').addEventListener('click', () => {
+      stopEverythingAndDisconnect(true);
+    });
+
+    // =========================================================================
+    // 7. CORE HITSTER GAMEPLAY & REAL-TIME INPUT LISTENERS
+    // =========================================================================
+    async function startNewMatch() {
+      if (loadedDeck.length < 4) {
+        await loadPlaylistUniversal();
+        if (loadedDeck.length < 4) return;
+      }
+
+      const deck = shuffleArray(loadedDeck);
+      const p1StartCard = deck.pop();
+      const p2StartCard = deck.pop();
+      const firstMystery = deck.pop();
+
+      const p1Name = document.getElementById('p1-name-input').value.trim() || 'Player 1';
+      const p2Name = document.getElementById('p2-name-input').value.trim() || 'Player 2';
+
+      gameState = {
+        status: 'playing',
+        phase: 'place',
+        activePlayer: 0,
+        players: [
+          { name: p1Name, coins: 1, timeline: [p1StartCard] },
+          { name: p2Name, coins: 1, timeline: [p2StartCard] }
+        ],
+        deck,
+        currentSong: firstMystery,
+        activeChoiceSlot: null,
+        remoteHoverSlot: null,
+        guessTitle: '',
+        guessArtist: '',
+        stealModeActive: false,
+        stealChoiceSlot: null,
+        liveActivityText: `🎵 ${p1Name} is listening and choosing a timeline slot...`,
+        lastRevealSummary: '',
+        winnerIndex: null
+      };
+
+      setMyPlayerSeat(myPlayerIndex);
+      broadcastState();
+      renderAll();
+      playCurrentMysteryTrack();
+    }
+
+    document.getElementById('start-game-btn').addEventListener('click', startNewMatch);
+    document.getElementById('back-to-lobby-btn').addEventListener('click', () => {
+      audioEl.pause();
+      gameState.status = 'lobby';
+      renderAll();
+    });
+
+    function playCurrentMysteryTrack() {
+      if (isStopped || !gameState.currentSong || !gameState.currentSong.previewUrl) return;
+      audioEl.src = gameState.currentSong.previewUrl;
+      audioEl.currentTime = 0;
+      audioEl.play().then(() => {
+        vinylDisc.classList.add('spinning');
+        document.getElementById('play-pause-btn').textContent = '⏸ Pause Audio';
+      }).catch(() => {
+        vinylDisc.classList.remove('spinning');
+        document.getElementById('play-pause-btn').textContent = '▶️ Play Audio';
+      });
+    }
+
+    document.getElementById('play-pause-btn').addEventListener('click', () => {
+      if (audioEl.paused) {
+        audioEl.play();
+        vinylDisc.classList.add('spinning');
+        document.getElementById('play-pause-btn').textContent = '⏸ Pause Audio';
+      } else {
+        audioEl.pause();
+        vinylDisc.classList.remove('spinning');
+        document.getElementById('play-pause-btn').textContent = '▶️ Play Audio';
+      }
+    });
+
+    document.getElementById('replay-btn').addEventListener('click', () => {
+      audioEl.currentTime = 0;
+      audioEl.play();
+      vinylDisc.classList.add('spinning');
+      document.getElementById('play-pause-btn').textContent = '⏸ Pause Audio';
+    });
+
+    // Real-time live typing broadcast for Song Title & Artist!
+    document.getElementById('guess-title-input').addEventListener('input', (e) => {
+      if (!canLocalPlayerActInPlacePhase()) return;
+      gameState.guessTitle = e.target.value;
+      const activeName = gameState.players[gameState.activePlayer].name;
+      sendLiveUpdate({
+        guessTitle: gameState.guessTitle,
+        guessArtist: gameState.guessArtist,
+        liveActivityText: `✍️ ${activeName} is typing Title: "${gameState.guessTitle || '...'}"`
+      });
+    });
+
+    document.getElementById('guess-artist-input').addEventListener('input', (e) => {
+      if (!canLocalPlayerActInPlacePhase()) return;
+      gameState.guessArtist = e.target.value;
+      const activeName = gameState.players[gameState.activePlayer].name;
+      sendLiveUpdate({
+        guessTitle: gameState.guessTitle,
+        guessArtist: gameState.guessArtist,
+        liveActivityText: `✍️ ${activeName} is typing Artist: "${gameState.guessArtist || '...'}"`
+      });
+    });
+
+    function isSlotPlacementCorrect(timeline, slotIndex, year) {
+      const leftYear = slotIndex > 0 ? timeline[slotIndex - 1].year : -Infinity;
+      const rightYear = slotIndex < timeline.length ? timeline[slotIndex].year : Infinity;
+      return year >= leftYear && year <= rightYear;
+    }
+
+    function insertSongChronologically(timeline, song) {
+      const copy = [...timeline, { ...song, justWon: true }];
+      copy.sort((a, b) => a.year - b.year);
+      return copy;
+    }
+
+    function describeSlotRange(timeline, slotIndex) {
+      if (timeline.length === 0) return 'Start';
+      if (slotIndex === 0) return `Older than ${timeline[0].year} (≤ ${timeline[0].year})`;
+      if (slotIndex === timeline.length) return `Younger than ${timeline[timeline.length - 1].year} (≥ ${timeline[timeline.length - 1].year})`;
+      return `Between ${timeline[slotIndex - 1].year} & ${timeline[slotIndex].year}`;
+    }
+
+    // Active Player locks in placement -> Strictly guarded so ONLY the active player can click!
+    document.getElementById('lock-guess-btn').addEventListener('click', () => {
+      if (!canLocalPlayerActInPlacePhase()) return;
+      if (gameState.activeChoiceSlot === null) return;
+
+      const activePlayer = gameState.players[gameState.activePlayer];
+      const opponentIdx = 1 - gameState.activePlayer;
+      const opponent = gameState.players[opponentIdx];
+
+      gameState.players.forEach(p => p.timeline.forEach(c => delete c.justWon));
+      gameState.remoteHoverSlot = null;
+
+      if (opponent.coins >= 1) {
+        gameState.phase = 'steal';
+        gameState.stealModeActive = false;
+        gameState.stealChoiceSlot = null;
+        gameState.liveActivityText =
+          `🪙 ${activePlayer.name} locked in! Waiting for ${opponent.name}'s Steal decision...`;
+      } else {
+        resolveTurnAndReveal();
+      }
+
+      broadcastState();
+      renderAll();
+    });
+
+    // Opponent Steal Controls -> Strictly guarded so ONLY the opponent can click!
+    document.getElementById('activate-steal-btn').addEventListener('click', () => {
+      if (!canLocalPlayerActInStealPhase()) return;
+      const opponentIdx = 1 - gameState.activePlayer;
+      const opponent = gameState.players[opponentIdx];
+      if (opponent.coins < 1) return;
+
+      opponent.coins -= 1;
+      gameState.stealModeActive = true;
+      gameState.stealChoiceSlot = null;
+      gameState.liveActivityText = `🔥 ${opponent.name} spent 1 Coin (🪙) to STEAL! Selecting alternative slot...`;
+
+      sendLiveUpdate({
+        stealModeActive: true,
+        stealChoiceSlot: null,
+        coins: [gameState.players[0].coins, gameState.players[1].coins],
+        liveActivityText: gameState.liveActivityText
+      });
+      renderAll();
+    });
+
+    document.getElementById('confirm-steal-btn').addEventListener('click', () => {
+      if (!canLocalPlayerActInStealPhase()) return;
+      if (gameState.stealChoiceSlot === null) return;
+      resolveTurnAndReveal();
+      broadcastState();
+      renderAll();
+    });
+
+    document.getElementById('pass-steal-btn').addEventListener('click', () => {
+      if (!canLocalPlayerActInStealPhase()) return;
+      gameState.stealModeActive = false;
+      gameState.stealChoiceSlot = null;
+      resolveTurnAndReveal();
+      broadcastState();
+      renderAll();
+    });
+
+    function resolveTurnAndReveal() {
+      gameState.phase = 'reveal';
+      gameState.remoteHoverSlot = null;
+      const activeIdx = gameState.activePlayer;
+      const opponentIdx = 1 - activeIdx;
+      const activePlayer = gameState.players[activeIdx];
+      const opponent = gameState.players[opponentIdx];
+      const song = gameState.currentSong;
+
+      const activeCorrect = isSlotPlacementCorrect(
+        activePlayer.timeline,
+        gameState.activeChoiceSlot,
+        song.year
+      );
+
+      let stealCorrect = false;
+      if (gameState.stealModeActive && gameState.stealChoiceSlot !== null) {
+        stealCorrect = isSlotPlacementCorrect(
+          activePlayer.timeline,
+          gameState.stealChoiceSlot,
+          song.year
+        );
+      }
+
+      const titleGood = isFuzzyOrHalfMatch(gameState.guessTitle, song.title);
+      const artistGood = isFuzzyOrHalfMatch(gameState.guessArtist, song.artist);
+      const earnedCoin = titleGood && artistGood;
+      if (earnedCoin) {
+        activePlayer.coins += 1;
+      }
+
+      const lines = [];
+      lines.push(
+        `🎵 Revealed: <strong>${song.title}</strong> by <strong>${song.artist}</strong> (<strong>${song.year}</strong>)`
+      );
+
+      if (activeCorrect) {
+        activePlayer.timeline.splice(gameState.activeChoiceSlot, 0, { ...song, justWon: true });
+        lines.push(
+          `✅ <strong>${activePlayer.name}</strong> placed it in the right timeline spot and wins the card!`
+        );
+        if (gameState.stealModeActive) {
+          lines.push(
+            `🪙 <strong>${opponent.name}</strong> spent 1 coin to steal, but ${activePlayer.name}'s placement was right (coin is lost).`
+          );
+        }
+      } else if (gameState.stealModeActive && stealCorrect) {
+        opponent.timeline = insertSongChronologically(opponent.timeline, song);
+        lines.push(
+          `🔥 <strong>STEAL SUCCESSFUL!</strong> ${activePlayer.name}'s placement was wrong, and <strong>${opponent.name}</strong> picked the exact right spot with their coin! The song is added to <strong>${opponent.name}'s timeline</strong>!`
+        );
+      } else {
+        lines.push(
+          `❌ <strong>${activePlayer.name}</strong>'s placement (${describeSlotRange(activePlayer.timeline, gameState.activeChoiceSlot)}) was off for <strong>${song.year}</strong>.`
+        );
+        if (gameState.stealModeActive) {
+          lines.push(
+            `❌ <strong>${opponent.name}</strong> spent 1 coin to steal, but their alternative slot was also wrong! Card discarded.`
+          );
+        }
+      }
+
+      if (gameState.guessTitle || gameState.guessArtist) {
+        if (earnedCoin) {
+          lines.push(
+            `🪙 <strong>+1 COIN EARNED!</strong> ${activePlayer.name} guessed both Title &amp; Artist correctly ("${gameState.guessTitle}" / "${gameState.guessArtist}")!`
+          );
+        } else {
+          const tMark = titleGood ? '✅ Title OK' : '❌ Title Missed';
+          const aMark = artistGood ? '✅ Artist OK' : '❌ Artist Missed';
+          lines.push(`🎤 Bonus Coin Guess ("${gameState.guessTitle || '—'}" / "${gameState.guessArtist || '—'}"): ${tMark} • ${aMark} (Need both for +1 🪙)`);
+        }
+      }
+
+      gameState.lastRevealSummary = lines.join('<br />');
+      gameState.liveActivityText = `✨ Card Revealed: ${song.year} — ${song.title}`;
+
+      if (activePlayer.timeline.length >= 10) {
+        gameState.status = 'finished';
+        gameState.winnerIndex = activeIdx;
+      } else if (opponent.timeline.length >= 10) {
+        gameState.status = 'finished';
+        gameState.winnerIndex = opponentIdx;
+      }
+    }
+
+    document.getElementById('next-turn-btn').addEventListener('click', () => {
+      if (gameState.deck.length === 0) {
+        gameState.deck = shuffleArray(loadedDeck);
+      }
+      gameState.currentSong = gameState.deck.pop();
+      gameState.activePlayer = 1 - gameState.activePlayer;
+      gameState.phase = 'place';
+      gameState.activeChoiceSlot = null;
+      gameState.remoteHoverSlot = null;
+      gameState.guessTitle = '';
+      gameState.guessArtist = '';
+      gameState.stealModeActive = false;
+      gameState.stealChoiceSlot = null;
+      const nextActiveName = gameState.players[gameState.activePlayer].name;
+      gameState.liveActivityText = `🎵 Now it's ${nextActiveName}'s turn to place the mystery song!`;
+
+      broadcastState();
+      renderAll();
+      playCurrentMysteryTrack();
+    });
+
+    document.getElementById('play-again-btn').addEventListener('click', () => {
+      document.getElementById('winner-modal').style.display = 'none';
+      startNewMatch();
+    });
+
+    // =========================================================================
+    // 8. UI RENDERING (WITH STRICT TURN LOCKING & LIVE SPECTATOR VIEW)
+    // =========================================================================
+    function renderTimelineStrip(containerEl, timeline, interactiveMode) {
+      containerEl.innerHTML = '';
+      const activeP = gameState.players[gameState.activePlayer];
+      const opponentP = gameState.players[1 - gameState.activePlayer];
+
+      const createSlotEl = (slotIdx) => {
+        const slot = document.createElement('div');
+        slot.className = 'timeline-slot';
+
+        const rangeText = describeSlotRange(timeline, slotIdx);
+        const isActivePick = gameState.activeChoiceSlot === slotIdx;
+        const isStealPick = gameState.stealChoiceSlot === slotIdx;
+        const isRemoteHover = gameState.remoteHoverSlot === slotIdx && !isActivePick && !isStealPick;
+
+        if (isActivePick) {
+          slot.classList.add('selected-active');
+          slot.innerHTML = `<div>🎯 ${activeP.name.split(' ')[0]}'S PICK</div><div>${rangeText}</div>`;
+        } else if (isStealPick) {
+          slot.classList.add('selected-steal');
+          slot.innerHTML = `<div>🪙 ${opponentP.name.split(' ')[0]}'S STEAL</div><div>${rangeText}</div>`;
+        } else if (isRemoteHover) {
+          slot.classList.add('remote-hover');
+          slot.innerHTML = `<div>👀 Looking...</div><div>${rangeText}</div>`;
+        } else {
+          slot.innerHTML = `<div style="font-size:18px;">＋</div><div>${rangeText}</div>`;
+        }
+
+        if (interactiveMode === 'place_editable') {
+          slot.addEventListener('mouseenter', () => {
+            sendLiveUpdate({
+              remoteHoverSlot: slotIdx,
+              liveActivityText: `👀 ${activeP.name} is looking at slot [${rangeText}]...`
+            });
+          });
+          slot.addEventListener('click', () => {
+            gameState.activeChoiceSlot = slotIdx;
+            gameState.remoteHoverSlot = null;
+            sendLiveUpdate({
+              activeChoiceSlot: slotIdx,
+              remoteHoverSlot: null,
+              liveActivityText: `🎯 ${activeP.name} selected slot [${rangeText}]!`
+            });
+            renderAll();
+          });
+        } else if (interactiveMode === 'steal_editable') {
+          if (isActivePick) {
+            slot.classList.add('disabled-slot');
+          } else {
+            slot.addEventListener('mouseenter', () => {
+              sendLiveUpdate({
+                remoteHoverSlot: slotIdx,
+                liveActivityText: `👀 ${opponentP.name} is considering stealing at [${rangeText}]...`
+              });
+            });
+            slot.addEventListener('click', () => {
+              gameState.stealChoiceSlot = slotIdx;
+              gameState.remoteHoverSlot = null;
+              sendLiveUpdate({
+                stealChoiceSlot: slotIdx,
+                remoteHoverSlot: null,
+                liveActivityText: `🪙 ${opponentP.name} placed Steal Coin on [${rangeText}]!`
+              });
+              renderAll();
+            });
+          }
+        } else {
+          // Spectator / Locked mode: player can see live picks & hovers, but CANNOT click!
+          slot.classList.add('spectator-locked');
+        }
+
+        return slot;
+      };
+
+      const createCardEl = (song) => {
+        const card = document.createElement('div');
+        card.className = 'song-card' + (song.justWon ? ' newly-won' : '');
+        const coverStyle = song.coverUrl ? `background-image: url('${song.coverUrl}')` : '';
+        card.innerHTML = `
+          <div class="song-card-cover" style="${coverStyle}"></div>
+          <div class="song-card-year">${song.year}</div>
+          <div class="song-card-title" title="${song.title}">${song.title}</div>
+          <div class="song-card-artist" title="${song.artist}">${song.artist}</div>
+        `;
+        return card;
+      };
+
+      for (let i = 0; i <= timeline.length; i++) {
+        if (interactiveMode !== 'readonly') {
+          containerEl.appendChild(createSlotEl(i));
+        }
+        if (i < timeline.length) {
+          containerEl.appendChild(createCardEl(timeline[i]));
+        }
+      }
+    }
+
+    function renderAll() {
+      const lobbyView = document.getElementById('lobby-view');
+      const gameView = document.getElementById('game-view');
+      const backBtn = document.getElementById('back-to-lobby-btn');
+
+      if (gameState.status === 'lobby') {
+        lobbyView.style.display = 'block';
+        gameView.style.display = 'none';
+        backBtn.style.display = 'none';
+        return;
+      }
+
+      lobbyView.style.display = 'none';
+      gameView.style.display = 'block';
+      backBtn.style.display = 'inline-flex';
+
+      const activeIdx = gameState.activePlayer;
+      const opponentIdx = 1 - activeIdx;
+      const activeP = gameState.players[activeIdx];
+      const opponentP = gameState.players[opponentIdx];
+
+      const isMyPlaceTurn = canLocalPlayerActInPlacePhase();
+      const isMyStealTurn = canLocalPlayerActInStealPhase();
+
+      [0, 1].forEach(idx => {
+        const p = gameState.players[idx];
+        const youSuffix = idx === myPlayerIndex ? ' (YOU)' : '';
+        document.getElementById(`p${idx}-hud-name`).textContent = p.name + youSuffix;
+        document.getElementById(`p${idx}-hud-sub`).textContent =
+          `Timeline Progress: ${p.timeline.length} / 10 Songs`;
+        document.getElementById(`p${idx}-coins`).textContent = p.coins;
+        document.getElementById(`p${idx}-cards`).textContent = p.timeline.length;
+
+        const cardEl = document.getElementById(`p${idx}-hud-card`);
+        cardEl.classList.remove('active-turn', 'steal-turn');
+        if (gameState.phase === 'place' && idx === activeIdx) {
+          cardEl.classList.add('active-turn');
+        } else if (gameState.phase === 'steal' && idx === opponentIdx) {
+          cardEl.classList.add('steal-turn');
+        }
+      });
+
+      document.getElementById('live-activity-pill').textContent =
+        gameState.liveActivityText || '📡 Live Sync Active';
+
+      const mysteryBox = document.getElementById('mystery-info-box');
+      const revealedBox = document.getElementById('revealed-info-box');
+      if (gameState.phase === 'reveal' && gameState.currentSong) {
+        mysteryBox.style.display = 'none';
+        revealedBox.style.display = 'block';
+        document.getElementById('rev-year').textContent = gameState.currentSong.year;
+        document.getElementById('rev-title').textContent = gameState.currentSong.title;
+        document.getElementById('rev-artist').textContent = gameState.currentSong.artist;
+        vinylCenter.textContent = '';
+        vinylCenter.style.backgroundImage = gameState.currentSong.coverUrl
+          ? `url('${gameState.currentSong.coverUrl}')`
+          : 'none';
+      } else {
+        mysteryBox.style.display = 'block';
+        revealedBox.style.display = 'none';
+        vinylCenter.style.backgroundImage = 'none';
+        vinylCenter.textContent = '?';
+      }
+
+      const activeControls = document.getElementById('active-guess-controls');
+      const stealControls = document.getElementById('steal-controls');
+      const revealControls = document.getElementById('reveal-controls');
+      const phaseBadge = document.getElementById('phase-badge');
+      const headline = document.getElementById('turn-headline');
+      const instruction = document.getElementById('turn-instruction');
+      const lockNotice = document.getElementById('spectator-lock-notice');
+      const titleInput = document.getElementById('guess-title-input');
+      const artistInput = document.getElementById('guess-artist-input');
+
+      // Keep inputs synced with live state without clobbering active cursor
+      if (document.activeElement !== titleInput) {
+        titleInput.value = gameState.guessTitle || '';
+      }
+      if (document.activeElement !== artistInput) {
+        artistInput.value = gameState.guessArtist || '';
+      }
+
+      if (gameState.phase === 'place') {
+        activeControls.style.display = 'block';
+        stealControls.style.display = 'none';
+        revealControls.style.display = 'none';
+
+        phaseBadge.textContent = isMyPlaceTurn
+          ? `🟢 YOUR TURN (${activeP.name})`
+          : `👀 WATCHING ${activeP.name.toUpperCase()}'S TURN LIVE`;
+
+        headline.textContent = isMyPlaceTurn
+          ? `${activeP.name} — Fit This Song Into Your Timeline!`
+          : `${activeP.name} is Placing the Song & Guessing...`;
+
+        instruction.innerHTML = isMyPlaceTurn
+          ? `Click a <strong>＋</strong> slot on your timeline below. Type both <strong>Title</strong> &amp; <strong>Artist</strong> (typos or half-titles count!) to earn <strong>+1 Coin (🪙)</strong>.`
+          : `Watch <strong>${activeP.name}</strong>'s timeline slot selection and live typing below! Once they lock in, you'll get a chance to <strong>Steal with a Coin (🪙)</strong>!`;
+
+        // Strict Turn Lock: Disable inputs & lock button if it is NOT our turn!
+        titleInput.disabled = !isMyPlaceTurn;
+        artistInput.disabled = !isMyPlaceTurn;
+        document.getElementById('title-input-label').textContent = isMyPlaceTurn
+          ? 'Guess Song Title (Half-Title or Typo OK!)'
+          : `👀 ${activeP.name}'s Live Title Guess:`;
+        document.getElementById('artist-input-label').textContent = isMyPlaceTurn
+          ? 'Guess Artist (Half-Name or Typo OK!)'
+          : `👀 ${activeP.name}'s Live Artist Guess:`;
+
+        lockNotice.style.display = isMyPlaceTurn ? 'none' : 'flex';
+        lockNotice.textContent = `🔒 Controls locked: Only ${activeP.name} can place the card and type right now. You are watching live!`;
+
+        const slotLabel = document.getElementById('selected-slot-label');
+        const lockBtn = document.getElementById('lock-guess-btn');
+        if (gameState.activeChoiceSlot !== null) {
+          slotLabel.textContent =
+            `🎯 Selected Slot: ${describeSlotRange(activeP.timeline, gameState.activeChoiceSlot)}`;
+          lockBtn.disabled = !isMyPlaceTurn;
+        } else {
+          slotLabel.textContent = isMyPlaceTurn
+            ? `👉 Click a slot on your timeline below to choose where this song fits`
+            : `⏳ ${activeP.name} hasn't selected a timeline slot yet...`;
+          lockBtn.disabled = true;
+        }
+        lockBtn.textContent = isMyPlaceTurn
+          ? '🔒 Lock In Timeline Placement & Guess'
+          : `⏳ Waiting for ${activeP.name} to Lock In...`;
+
+      } else if (gameState.phase === 'steal') {
+        activeControls.style.display = 'none';
+        stealControls.style.display = 'block';
+        revealControls.style.display = 'none';
+
+        phaseBadge.textContent = isMyStealTurn
+          ? `🪙 YOUR STEAL CHANCE (${opponentP.name})`
+          : `👀 WAITING FOR ${opponentP.name.toUpperCase()}'S STEAL DECISION`;
+
+        headline.textContent = isMyStealTurn
+          ? `${opponentP.name} — Do You Want to Steal With a Coin?`
+          : `${opponentP.name} is Deciding Whether to Steal...`;
+
+        const pickedRange = describeSlotRange(activeP.timeline, gameState.activeChoiceSlot);
+        document.getElementById('steal-prompt-text').innerHTML =
+          `<strong>${activeP.name}</strong> placed the mystery song at: <span style="color:var(--neon-cyan)">${pickedRange}</span>` +
+          (gameState.guessTitle || gameState.guessArtist
+            ? ` and guessed <em>"${gameState.guessTitle || '?'}" — "${gameState.guessArtist || '?'}"</em>.`
+            : `.`);
+
+        lockNotice.style.display = isMyStealTurn ? 'none' : 'flex';
+        lockNotice.textContent = `🔒 Controls locked: Only ${opponentP.name} can decide whether to spend a Coin to steal right now!`;
+
+        const activateBtn = document.getElementById('activate-steal-btn');
+        const confirmBtn = document.getElementById('confirm-steal-btn');
+        const passBtn = document.getElementById('pass-steal-btn');
+
+        activateBtn.disabled = !isMyStealTurn;
+        passBtn.disabled = !isMyStealTurn;
+
+        if (!gameState.stealModeActive) {
+          instruction.innerHTML = isMyStealTurn
+            ? `You have <strong>${opponentP.coins} Coin(s) (🪙)</strong>. If you think ${activeP.name} is wrong, spend 1 Coin to pick a different slot!`
+            : `Watching <strong>${opponentP.name}</strong> (${opponentP.coins} 🪙) decide whether to challenge your placement...`;
+          activateBtn.style.display = 'inline-flex';
+          confirmBtn.style.display = 'none';
+        } else {
+          instruction.innerHTML = isMyStealTurn
+            ? `🪙 <strong>Coin Spent!</strong> Click an alternative <strong>＋</strong> slot on ${activeP.name}'s timeline below where you think the song belongs!`
+            : `🔥 <strong>${opponentP.name} spent 1 Coin to STEAL!</strong> Watch their gold steal selection on your timeline below!`;
+          activateBtn.style.display = 'none';
+          confirmBtn.style.display = 'inline-flex';
+          confirmBtn.disabled = !isMyStealTurn || gameState.stealChoiceSlot === null;
+        }
+      } else if (gameState.phase === 'reveal') {
+        activeControls.style.display = 'none';
+        stealControls.style.display = 'none';
+        revealControls.style.display = 'block';
+        lockNotice.style.display = 'none';
+
+        phaseBadge.textContent = `✨ STEP 3: YEAR REVEALED!`;
+        headline.textContent = `${gameState.currentSong.year} — ${gameState.currentSong.title}`;
+        instruction.textContent = `Check out the result below! Next turn: ${opponentP.name}.`;
+        document.getElementById('reveal-outcome-banner').innerHTML = gameState.lastRevealSummary;
+      }
+
+      document.getElementById('active-timeline-title').textContent =
+        `💿 ${activeP.name}'s Timeline (${activeP.timeline.length}/10 Songs)`;
+      document.getElementById('other-timeline-title').textContent =
+        `👀 ${opponentP.name}'s Timeline (${opponentP.timeline.length}/10 Songs)`;
+
+      // Only make timeline slots clickable for the exact player whose turn it is!
+      let interactiveMode = 'spectator';
+      if (gameState.phase === 'place' && isMyPlaceTurn) {
+        interactiveMode = 'place_editable';
+      } else if (gameState.phase === 'steal' && gameState.stealModeActive && isMyStealTurn) {
+        interactiveMode = 'steal_editable';
+      }
+
+      renderTimelineStrip(
+        document.getElementById('active-timeline-strip'),
+        activeP.timeline,
+        interactiveMode
+      );
+      renderTimelineStrip(
+        document.getElementById('other-timeline-strip'),
+        opponentP.timeline,
+        'readonly'
+      );
+
+      if (gameState.status === 'finished' && gameState.winnerIndex !== null) {
+        const winner = gameState.players[gameState.winnerIndex];
+        document.getElementById('winner-title').textContent = `🏆 ${winner.name} WINS!`;
+        document.getElementById('winner-sub').textContent =
+          `${winner.name} completed a timeline of 10 songs and is the Hitster Champion!`;
+        document.getElementById('winner-modal').style.display = 'flex';
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('seat')) {
+        setMyPlayerSeat(parseInt(params.get('seat'), 10));
+      } else if (params.has('room')) {
+        setMyPlayerSeat(1);
+      } else {
+        setMyPlayerSeat(0);
+      }
+
+      loadPlaylistUniversal();
+      updateInviteUrlDisplay();
+      tunnelPollInterval = setInterval(updateInviteUrlDisplay, 4000);
+
+      if (params.has('room')) {
+        const r = params.get('room').toUpperCase();
+        document.getElementById('room-code-input').value = r;
+        connectOnlineRoom(r, document.getElementById(`p${myPlayerIndex + 1}-name-input`).value);
+      }
+    });
+  </script>
+</body>
+</html>
